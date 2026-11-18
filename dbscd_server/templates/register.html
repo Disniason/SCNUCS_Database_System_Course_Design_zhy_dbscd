@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册账号 - zhy_dbscd简易短视频平台</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background-color: #000000;
+            min-height: 100vh;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .card {
+            width: 100%;
+            max-width: 420px;
+            background-color: #121212;
+            border-radius: 18px;
+            padding: 36px 30px;
+            box-shadow: 0 0 24px rgba(255,255,255,0.06);
+            border: 1px solid #222;
+        }
+        h2 {
+            color: #ffffff;
+            text-align: center;
+            font-size: 26px;
+            margin-bottom: 32px;
+            font-weight: 600;
+        }
+        .form-item {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            color: #b8b8b8;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .input-row {
+            display: flex;
+            gap: 10px;
+        }
+        input {
+            flex: 1;
+            background-color: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 10px;
+            color: #fff;
+            padding: 13px 14px;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.25s;
+        }
+        input:focus {
+            border-color: #fe2c55;
+        }
+        input:disabled {
+            background-color: #161616;
+            color: #777;
+        }
+        button {
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: 0.2s;
+        }
+        button:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+        }
+        .btn-send {
+            background-color: #fe2c55;
+            color: white;
+            white-space: nowrap;
+            padding: 0 16px;
+        }
+        .btn-verify {
+            background-color: #25c2a0;
+            color: white;
+            padding: 0 16px;
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 14px;
+            margin-top: 8px;
+            background-color: #fe2c55;
+            color: white;
+            font-size: 16px;
+        }
+        .tip {
+            color: #888;
+            font-size: 12px;
+            margin-top: 6px;
+        }
+        .msg-box {
+            margin-top:16px;
+            padding:12px;
+            border-radius:10px;
+            text-align:center;
+            font-size:14px;
+            display:none;
+        }
+        .msg-success {
+            background-color: rgba(37,194,160,0.12);
+            color:#25c2a0;
+            border:1px solid rgba(37,194,160,0.25);
+        }
+        .msg-error {
+            background-color: rgba(254,44,85,0.12);
+            color:#fe2c55;
+            border:1px solid rgba(254,44,85,0.25);
+        }
+        .divider {
+            margin:28px 0 16px;
+            height:1px;
+            background:#222;
+        }
+        .link-wrap {
+            text-align:center;
+        }
+        .link-wrap a {
+            color:#fe2c55;
+            text-decoration:none;
+            font-size:14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>注册账号</h2>
+        <div class="form-item">
+            <label>邮箱</label>
+            <div class="input-row">
+                <input id="email" type="email" placeholder="请输入注册邮箱">
+                <button id="sendCodeBtn" class="btn-send">发送验证码</button>
+            </div>
+        </div>
+        <div class="form-item">
+            <label>验证码</label>
+            <div class="input-row">
+                <input id="code" type="text" maxlength="6" placeholder="6位数字验证码">
+                <button id="verifyBtn" class="btn-verify">验证</button>
+            </div>
+        </div>
+        <div class="form-item">
+            <label>设置密码</label>
+            <input id="pw1" type="password" placeholder="至少6位密码" disabled>
+            <div class="tip">密码建议字母+数字组合</div>
+        </div>
+        <div class="form-item">
+            <label>确认密码</label>
+            <input id="pw2" type="password" placeholder="再次输入密码" disabled>
+        </div>
+        <button id="regBtn" class="btn-submit" disabled>完成注册</button>
+
+        <div id="msgBox" class="msg-box"></div>
+
+        <div class="divider"></div>
+        <div class="link-wrap">
+            <a href="/user/login">已有账号？去登录</a>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = "";
+        let canSetPwd = false;
+        let countdownTimer = null;
+        let count = 0;
+
+        const $ = s => document.querySelector(s);
+        const emailInput = $("#email");
+        const sendBtn = $("#sendCodeBtn");
+        const codeInput = $("#code");
+        const verifyBtn = $("#verifyBtn");
+        const pw1 = $("#pw1");
+        const pw2 = $("#pw2");
+        const regBtn = $("#regBtn");
+        const msgBox = $("#msgBox");
+
+        function showMsg(text, isOk){
+            msgBox.style.display = "block";
+            msgBox.className = "msg-box " + (isOk ? "msg-success" : "msg-error");
+            msgBox.innerText = text;
+            setTimeout(()=>{
+                msgBox.style.display = "none";
+            }, 3000);
+        }
+
+        function startCount(){
+            count = 60;
+            sendBtn.disabled = true;
+            sendBtn.innerText = `${count}s后重发`;
+            countdownTimer = setInterval(()=>{
+                count--;
+                sendBtn.innerText = `${count}s后重发`;
+                if(count <= 0){
+                    clearInterval(countdownTimer);
+                    sendBtn.disabled = false;
+                    sendBtn.innerText = "发送验证码";
+                }
+            }, 1000);
+        }
+
+        // 发送验证码
+        sendBtn.onclick = async ()=>{
+            const email = emailInput.value.trim();
+            if(!email || !email.includes("@")) return showMsg("请输入合法邮箱", false);
+            sendBtn.disabled = true;
+            sendBtn.innerText = "发送中...";
+            const res = await fetch(`${API_BASE}/api/user/send-code`, {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({email})
+            });
+            const data = await res.json();
+            if(data.code === 1){
+                showMsg(data.msg, true);
+                startCount();
+            }else{
+                showMsg(data.msg, false);
+                sendBtn.disabled = false;
+                sendBtn.innerText = "发送验证码";
+            }
+        }
+
+        // 验证验证码
+        verifyBtn.onclick = async ()=>{
+            const email = emailInput.value.trim();
+            const code = codeInput.value.trim();
+            if(!email || !code) return showMsg("填写邮箱和验证码", false);
+            verifyBtn.disabled = true;
+            verifyBtn.innerText = "验证中...";
+            const res = await fetch(`${API_BASE}/api/user/verify-code`, {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({email, code})
+            });
+            const data = await res.json();
+            if(data.code === 1){
+                showMsg(data.msg, true);
+                canSetPwd = true;
+                pw1.disabled = false;
+                pw2.disabled = false;
+                regBtn.disabled = false;
+            }else{
+                showMsg(data.msg, false);
+            }
+            verifyBtn.disabled = false;
+            verifyBtn.innerText = "验证";
+        }
+
+        // 注册提交
+        regBtn.onclick = async ()=>{
+            const email = emailInput.value.trim();
+            const p1 = pw1.value;
+            const p2 = pw2.value;
+            if(!canSetPwd) return showMsg("先验证验证码", false);
+            if(p1.length < 6) return showMsg("密码至少6位", false);
+            if(p1 !== p2) return showMsg("两次密码不一致", false);
+            regBtn.disabled = true;
+            regBtn.innerText = "注册中...";
+            const res = await fetch(`${API_BASE}/api/user/finish-register`, {
+                method:"POST",
+                headers:{"Content-Type":"application/json"},
+                body:JSON.stringify({
+                    email,
+                    encrypted_password: p1
+                })
+            });
+            const data = await res.json();
+            if(data.code === 1){
+                showMsg(data.msg, true);
+                setTimeout(()=>location.href="/user/login",1500);
+            }else{
+                showMsg(data.msg, false);
+                regBtn.disabled = false;
+                regBtn.innerText = "完成注册";
+            }
+        }
+    </script>
+</body>
+</html>
